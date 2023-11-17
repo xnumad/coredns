@@ -8,6 +8,7 @@ import (
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
 	"os/exec"
+	"strings"
 )
 
 var log = clog.NewWithPlugin("arp")
@@ -48,7 +49,9 @@ func ipToMac(ipAddr string) (macAddr string, e error) {
 	if err != nil {
 		return "", err
 	}
-	return string(out), nil
+	outStr := string(out)
+	outStrStripped := strings.TrimSuffix(outStr, "\n")
+	return outStrStripped, nil
 }
 
 func (a Arp) Name() string { return "arp" }
