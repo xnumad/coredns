@@ -47,6 +47,10 @@ func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (in
 
 func ipToMac(ipAddr string) (macAddr string, e error) {
 	out, err := exec.Command("ndisc6", "-q", ipAddr, "wlp2s0" /*TODO don't hardcode interface*/).Output()
+
+	//TODO IPv4 addresses
+	//arping doesn't have easy output, use some Go library
+
 	if err != nil {
 		return "", err
 	}
