@@ -15,6 +15,7 @@ var log = clog.NewWithPlugin("arp")
 
 type Arp struct {
 	Next plugin.Handler
+	*Arpfile
 }
 
 func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
@@ -31,6 +32,10 @@ func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (in
 	log.Debug("PTR for " + ipAddr)
 	mac, err := ipToMac(ipAddr)
 	hostname := mac //TODO: MAC to name via ethers file
+	hostnames := a.LookupStaticAddr(mac)
+	if len(hostnames) != 0 {
+		hostname = hostnames[0]
+	}
 	if err != nil {
 		return plugin.NextOrFailure(a.Name(), a.Next, ctx, w, r)
 	}

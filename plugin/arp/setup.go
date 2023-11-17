@@ -9,10 +9,32 @@ import (
 func init() { plugin.Register("arp", setup) }
 
 func setup(c *caddy.Controller) error {
+	h, err := arpParse(c)
+	if err != nil {
+		return plugin.Error("arp", err)
+	}
+
 	// Add the Plugin to CoreDNS, so Servers can use it in their plugin chain.
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
-		return Arp{Next: next}
+		h.Next = next
+		return h
 	})
 
 	return nil
+}
+
+func arpParse(c *caddy.Controller) (Arp, error) {
+	h := Arp{
+		Arpfile: &Arpfile{
+			path: "/mnt/tmpfs/ethers", //TODO some other file
+			hmap: newMap(),
+		},
+	}
+
+	c.OnStartup(func() error {
+		h.readEthers()
+		return nil
+	})
+
+	return h, nil
 }
