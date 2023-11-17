@@ -29,7 +29,8 @@ func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (in
 
 	ipAddr := dnsutil.ExtractAddressFromReverse(qname)
 	log.Debug("PTR for " + ipAddr)
-	hostname, err := ipToMac(ipAddr)
+	mac, err := ipToMac(ipAddr)
+	hostname := mac //TODO: MAC to name via ethers file
 	if err != nil {
 		return plugin.NextOrFailure(a.Name(), a.Next, ctx, w, r)
 	}
