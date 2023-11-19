@@ -70,7 +70,7 @@ func ipToMac(ipAddr string) (macAddr string, e error) {
 func (a Arp) Name() string { return "arp" }
 
 // from hosts.go
-func (a *Arp) ptr(zone string, ttl uint32, names []string) []dns.RR {
+func (a Arp) ptr(zone string, ttl uint32, names []string) []dns.RR {
 	answers := make([]dns.RR, len(names))
 	for i, n := range names {
 		r := new(dns.PTR)
