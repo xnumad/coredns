@@ -30,14 +30,16 @@ func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (in
 
 	ipAddr := dnsutil.ExtractAddressFromReverse(qname)
 	log.Debug("PTR for " + ipAddr)
+
 	mac, err := ipToMac(ipAddr)
+	if err != nil {
+		return plugin.NextOrFailure(a.Name(), a.Next, ctx, w, r)
+	}
+
 	result := mac
 	hostnames := a.LookupStaticAddr(mac)
 	if len(hostnames) != 0 {
 		result = hostnames[0]
-	}
-	if err != nil {
-		return plugin.NextOrFailure(a.Name(), a.Next, ctx, w, r)
 	}
 	answers = a.ptr(qname, 3600, []string{result})
 
