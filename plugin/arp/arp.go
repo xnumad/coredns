@@ -31,7 +31,7 @@ func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (in
 	ipAddr := dnsutil.ExtractAddressFromReverse(qname)
 	log.Debug("PTR for " + ipAddr)
 	mac, err := ipToMac(ipAddr)
-	hostname := mac //TODO: MAC to name via ethers file
+	hostname := mac
 	hostnames := a.LookupStaticAddr(mac)
 	if len(hostnames) != 0 {
 		hostname = hostnames[0]
