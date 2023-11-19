@@ -6,9 +6,13 @@ import (
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
+	"github.com/mdlayher/arp"
 	"github.com/miekg/dns"
+	"net"
+	"net/netip"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 var log = clog.NewWithPlugin("arp")
@@ -16,6 +20,8 @@ var log = clog.NewWithPlugin("arp")
 type Arp struct {
 	Next plugin.Handler
 	*Arpfile
+	*arp.Client
+	IfName string
 }
 
 func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
@@ -31,8 +37,24 @@ func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (in
 	ipAddr := dnsutil.ExtractAddressFromReverse(qname)
 	log.Debug("PTR for " + ipAddr)
 
-	mac, err := ipToMac(ipAddr)
+	addr, err := netip.ParseAddr(ipAddr)
 	if err != nil {
+		return plugin.NextOrFailure(a.Name(), a.Next, ctx, w, r)
+	}
+
+	mac := ""
+	if addr.Is6() {
+		mac, err = a.ipv6ToMac(ipAddr)
+		if err != nil {
+			return plugin.NextOrFailure(a.Name(), a.Next, ctx, w, r)
+		}
+	} else if addr.Is4() {
+		macTyped, err := a.ipv4ToMac(addr) //bug: doesn't work with interface's IPv4 addr (IPv6 works)
+		if err != nil {
+			return plugin.NextOrFailure(a.Name(), a.Next, ctx, w, r)
+		}
+		mac = macTyped.String()
+	} else {
 		return plugin.NextOrFailure(a.Name(), a.Next, ctx, w, r)
 	}
 
@@ -52,11 +74,21 @@ func (a Arp) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (in
 	return dns.RcodeSuccess, nil
 }
 
-func ipToMac(ipAddr string) (macAddr string, e error) {
-	out, err := exec.Command("ndisc6", "-q", ipAddr, "wlp2s0" /*TODO don't hardcode interface*/).Output()
+func (a Arp) ipv4ToMac(addr netip.Addr) (macAddr net.HardwareAddr, e error) {
+	if err := a.Client.SetDeadline(time.Now().Add(time.Second) /*absolute deadline*/); err != nil { //else DNS timeout
+		return nil, err
+	}
 
-	//TODO IPv4 addresses
-	//arping doesn't have easy output, use some Go library
+	hardwareAddr, err := a.Client.Resolve(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return hardwareAddr, nil
+}
+
+func (a Arp) ipv6ToMac(ipAddr string) (macAddr string, e error) {
+	out, err := exec.Command("ndisc6", "-q", ipAddr, a.IfName).Output()
 
 	if err != nil {
 		//e.g. timeout
