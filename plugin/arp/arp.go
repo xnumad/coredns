@@ -57,6 +57,7 @@ func ipToMac(ipAddr string) (macAddr string, e error) {
 	//arping doesn't have easy output, use some Go library
 
 	if err != nil {
+		//e.g. timeout
 		return "", err
 	}
 	outStr := string(out)
